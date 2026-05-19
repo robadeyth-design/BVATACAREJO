@@ -1,0 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&family=Space+Grotesk:wght@600;700;800&family=JetBrains+Mono:wght@600;750;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Force supreme bold typography on everything to align with the bold writing request */
+body, button, input, select, textarea, div, p, span, h1, h2, h3, h4, h5, h6, th, td, label, option {
+  font-weight: 750 !important; /* Forces bold writing across all elements */
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #f1f5f9;
+  color: #000000;
+}
+
+/* Consistent neo-tactile black borders for inputs, buttons and selections */
+input, select, textarea {
+  border: 2px solid #000000 !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+}
+
+/* Ensure placeholder text is also clear and prominent */
+::placeholder {
+  color: #64748b !important;
+  font-weight: 750 !important;
+  opacity: 1 !important;
+}
+

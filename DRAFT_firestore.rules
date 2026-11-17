@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Catch-all Deny Security Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core verification primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. Category validation helper
+    function isValidCategory(data) {
+      return data.keys().hasAll(['id', 'name', 'subcategories']) && 
+             data.keys().size() == 3 &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.subcategories is list && data.subcategories.size() <= 50;
+    }
+
+    // 2. Product validation helper
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name', 'barcode', 'category', 'subcategory', 'minStock', 'packaging', 'batches']) &&
+             data.keys().size() <= 10 && // Allow occasional optional fields like description/image
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 200 &&
+             data.barcode is string && data.barcode.size() <= 64 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.subcategory is string && data.subcategory.size() <= 100 &&
+             data.minStock is number && data.minStock >= 0 &&
+             data.packaging is string && data.packaging.size() <= 100 &&
+             data.batches is list && data.batches.size() <= 50;
+    }
+
+    // 3. Transaction validation helper (Historical log)
+    function isValidTransaction(data) {
+      return data.keys().hasAll([
+               'id', 'productId', 'productName', 'barcode', 'type', 
+               'quantity', 'operatorName', 'timestamp', 'packaging', 'batchId', 'batchDate'
+             ]) &&
+             data.keys().size() <= 12 &&
+             data.id is string && data.id.size() <= 128 &&
+             data.productId is string && data.productId.size() <= 128 &&
+             data.productName is string && data.productName.size() <= 200 &&
+             data.barcode is string && data.barcode.size() <= 64 &&
+             data.type is string && (data.type == 'entrada' || data.type == 'saida' || data.type == 'transferencia') &&
+             data.quantity is number && data.quantity > 0 &&
+             data.operatorName is string && data.operatorName.size() <= 100 &&
+             data.timestamp is string &&
+             data.packaging is string && data.packaging.size() <= 100 &&
+             data.batchId is string && data.batchId.size() <= 128 &&
+             data.batchDate is string && data.batchDate.size() <= 64 &&
+             (!data.keys().contains('transferDestination') || (data.transferDestination is string && data.transferDestination.size() <= 64));
+    }
+
+    // --- Collections Match Groups ---
+
+    match /categories/{catId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(catId) && isValidCategory(request.resource.data);
+    }
+
+    match /products/{prodId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(prodId) && isValidProduct(request.resource.data);
+    }
+
+    match /transactions/{txId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(txId) && isValidTransaction(request.resource.data);
+      allow update, delete: if false; // Auditable transactions MUST remain strictly immutable
+    }
+  }
+}

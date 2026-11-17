@@ -1,6 +1,10 @@
 {
-  "name": "BV Atacarejo Logística",
-  "description": "Sistema de logística e controle de estoque do BV ATACAREJO. Permite controle de entradas/saídas por operador, gerenciamento de validades múltiplas (até 5 por lote), categorias/subcategorias, importação/exportação e compatibilidade com leitores de código de barras portáteis e câmeras Android.",
-  "requestFramePermissions": ["camera"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "BV Atacarejo - Controle de Estoque",
+  "description": "Sistema avançado de controle de estoque, inventário e lotes para o BV Atacarejo, com leitor de código de barras via câmera, suporte a Firebase Auth e Firestore em tempo real.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

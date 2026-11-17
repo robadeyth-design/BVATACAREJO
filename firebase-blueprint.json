@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "Category": {
+      "title": "Category",
+      "description": "Categorias de produtos e suas subcategorias associadas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID único da categoria" },
+        "name": { "type": "string", "description": "Nome descritivo da categoria" },
+        "subcategories": { "type": "array", "description": "Lista de subcategorias" }
+      },
+      "required": ["id", "name", "subcategories"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Especificação do produto no catálogo e controle de seus lotes de validade",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "barcode": { "type": "string" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string" },
+        "minStock": { "type": "number" },
+        "packaging": { "type": "string" },
+        "batches": { "type": "array" },
+        "image": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "name", "barcode", "category", "subcategory", "minStock", "packaging", "batches"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Histórico de movimentações (entrada/saída) de estoque",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "barcode": { "type": "string" },
+        "type": { "type": "string", "enum": ["entrada", "saida", "transferencia"] },
+        "quantity": { "type": "number" },
+        "operatorName": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "packaging": { "type": "string" },
+        "batchId": { "type": "string" },
+        "batchDate": { "type": "string" },
+        "transferDestination": { "type": "string", "enum": ["anexo", "loja", "3019", ""] }
+      },
+      "required": ["id", "productId", "productName", "barcode", "type", "quantity", "operatorName", "timestamp", "packaging", "batchId", "batchDate"]
+    },
+    "PurchaseOrder": {
+      "title": "PurchaseOrder",
+      "description": "Pedidos de compra montados via checklist de compra",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "operatorName": { "type": "string" },
+        "items": { "type": "array" },
+        "totalItemsCount": { "type": "number" },
+        "totalUnitsCount": { "type": "number" }
+      },
+      "required": ["id", "createdAt", "operatorName", "items", "totalItemsCount", "totalUnitsCount"]
+    }
+  },
+  "firestore": {
+    "categories": {
+      "schema": "Category",
+      "description": "Coleção raiz de categorias"
+    },
+    "products": {
+      "schema": "Product",
+      "description": "Coleção raiz de produtos do inventário"
+    },
+    "transactions": {
+      "schema": "Transaction",
+      "description": "Coleção raiz de registros de transações de entrada e saída"
+    },
+    "purchase_orders": {
+      "schema": "PurchaseOrder",
+      "description": "Coleção raiz de pedidos salvos pelo checklist de compra"
+    }
+  }
+}

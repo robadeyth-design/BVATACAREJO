@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Catch-all Deny Security Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core verification primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. Category validation helper
+    function isValidCategory(data) {
+      return data.keys().hasAll(['id', 'name', 'subcategories']) && 
+             data.keys().size() == 3 &&
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.subcategories is list && data.subcategories.size() <= 50;
+    }
+
+    // 2. Product validation helper
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name', 'barcode', 'category', 'subcategory', 'minStock', 'packaging', 'batches']) &&
+             data.keys().size() <= 20 && // Allow optional fields like description, brand, weightVolume, image
+             data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 300 &&
+             data.barcode is string && data.barcode.size() <= 64 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.subcategory is string && data.subcategory.size() <= 100 &&
+             data.minStock is number && data.minStock >= 0 &&
+             data.packaging is string && data.packaging.size() <= 150 &&
+             data.batches is list && data.batches.size() <= 200;
+    }
+
+    // 3. Transaction validation helper (Historical log)
+    function isValidTransaction(data) {
+      return data.keys().hasAll([
+               'id', 'productId', 'productName', 'barcode', 'type', 
+               'quantity', 'operatorName', 'timestamp', 'packaging', 'batchId', 'batchDate'
+             ]) &&
+             data.keys().size() <= 16 &&
+             data.id is string && data.id.size() <= 128 &&
+             data.productId is string && data.productId.size() <= 128 &&
+             data.productName is string && data.productName.size() <= 300 &&
+             data.barcode is string && data.barcode.size() <= 64 &&
+             data.type is string && (data.type == 'entrada' || data.type == 'saida' || data.type == 'transferencia') &&
+             data.quantity is number && data.quantity > 0 &&
+             data.operatorName is string && data.operatorName.size() <= 150 &&
+             data.timestamp is string && data.timestamp.size() <= 64 &&
+             data.packaging is string && data.packaging.size() <= 150 &&
+             data.batchId is string && data.batchId.size() <= 128 &&
+             data.batchDate is string && data.batchDate.size() <= 64 &&
+             (!('transferDestination' in data) || (data.transferDestination is string && data.transferDestination.size() <= 64)) &&
+             (!('sourceSector' in data) || (data.sourceSector is string && data.sourceSector.size() <= 64)) &&
+             (!('nfPhoto' in data) || (data.nfPhoto is string && data.nfPhoto.size() <= 600000));
+    }
+
+    // 4. HistoricoGtin validation helper
+    function isValidHistoricoGtin(data) {
+      return data.keys().hasAll(['id', 'produtoId', 'produtoNome', 'gtinAnterior', 'gtinNovo', 'origem', 'createdAt']) &&
+             data.keys().size() == 7 &&
+             data.id is string && data.id.size() <= 128 &&
+             data.produtoId is string && data.produtoId.size() <= 128 &&
+             data.produtoNome is string && data.produtoNome.size() <= 200 &&
+             data.gtinAnterior is string && data.gtinAnterior.size() <= 64 &&
+             data.gtinNovo is string && data.gtinNovo.size() <= 64 &&
+             data.origem is string && data.origem.size() <= 100 &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // 5. PurchaseOrder validation helper
+    function isValidPurchaseOrder(data) {
+      return data.keys().hasAll(['id', 'createdAt', 'operatorName', 'items', 'totalItemsCount', 'totalUnitsCount']) &&
+             data.keys().hasOnly(['id', 'createdAt', 'operatorName', 'items', 'totalItemsCount', 'totalUnitsCount']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.createdAt is string && data.createdAt.size() <= 64 &&
+             data.operatorName is string && data.operatorName.size() <= 100 &&
+             data.items is list && data.items.size() >= 1 && data.items.size() <= 500 &&
+             data.totalItemsCount is number && data.totalItemsCount >= 1 &&
+             data.totalUnitsCount is number && data.totalUnitsCount >= 1;
+    }
+
+    // --- Collections Match Groups ---
+
+    match /categories/{catId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(catId) && isValidCategory(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(catId);
+    }
+
+    match /products/{prodId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(prodId) && isValidProduct(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(prodId);
+    }
+
+    match /transactions/{txId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(txId) && isValidTransaction(request.resource.data);
+      allow update, delete: if false; // Auditable transactions MUST remain strictly immutable
+    }
+
+    match /historico_gtin/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(logId) && isValidHistoricoGtin(request.resource.data);
+      allow update, delete: if false; // GTIN change audit logs MUST remain strictly immutable
+    }
+
+    match /purchase_orders/{orderId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(orderId) && isValidPurchaseOrder(request.resource.data);
+      allow update, delete: if isSignedIn() && isValidId(orderId);
+    }
+  }
+}
